@@ -37,7 +37,8 @@ import net.minecraft.util.*;
 
 @ModuleInfo(name = "NoFall", spacedName = "No Fall", description = "Prevents you from taking fall damage.", category = ModuleCategory.PLAYER)
 public class NoFall extends Module {
-    public final ListValue modeValue = new ListValue("Mode", new String[]{"SpoofGround", "NoGround", "Packet", "NewPacket", "MLG" , "AAC", "LAAC", "AAC3.3.11", "AAC3.3.15", "Spartan", "CubeCraft" , "Hypixel", "NewHypixel", "Damage", "Edit", "Verus"}, "SpoofGround");
+    public final ListValue modeValue = new ListValue("Mode", new String[]{"SpoofGround", "NoGround", "Packet", "NewPacket", "MLG" , "AAC", "LAAC", "AAC3.3.11", "AAC3.3.15", "Spartan", "CubeCraft" , "Hypixel", "NewHypixel", "Damage", "Edit", "Verus", "Collide"}, "SpoofGround");
+    public final ListValue spoofModeValue = new ListValue("SpoofGround-Mode", new String[]{"Always", "Smart"}, "Always")
     private final FloatValue minFallDistance = new FloatValue("MinMLGHeight", 5F, 2F, 50F);
     private final BoolValue voidCheck = new BoolValue("Void-Check", true);
 
@@ -139,6 +140,12 @@ public class NoFall extends Module {
                     spartanTimer.reset();
                 }
                 break;
+            case "collide":
+                if(mc.thePlayer.fallDistance - mc.thePlayer.motionY > 3) {
+                    event.setBoundingBox(new AxisAlignedBB(-2, -1, -2, 2, 1, 2).offset(event.getX(), event.getY(), event.getZ()));
+                    mc.thePlayer.fallDistance = 0.0f;
+                }
+                break;
             case "verus": {
                 if(mc.thePlayer.fallDistance - mc.thePlayer.motionY > 3) {
                     mc.thePlayer.motionY = 0.0;
@@ -162,8 +169,13 @@ public class NoFall extends Module {
             final C03PacketPlayer playerPacket = (C03PacketPlayer) packet;
 
             if (mode.equalsIgnoreCase("SpoofGround"))
-                playerPacket.onGround = true;
-
+                if (spoofMode.equalsIgnoreCase("Always"))                
+                    playerPacket.onGround = true;
+                if (spoofMode.equalsIgnoreCase("Smart")
+                       && mc.thePlayer != null && mc.thePlayer.fallDistance > 3)
+                    mc.thePlayer.fallDistance = 0.0f;
+                    shouldSpoof = true;
+            
             if (mode.equalsIgnoreCase("NoGround"))
                 playerPacket.onGround = false;
 
@@ -189,7 +201,10 @@ public class NoFall extends Module {
             if (mode.equalsIgnoreCase("Verus") && mc.thePlayer != null && shouldSpoof) {
                 playerPacket.onGround = true;
                 shouldSpoof = false;
-            }
+
+            if (mode.equalsIgnoreCase("SpoofGround") && mode.equalsIgnoreCase("Smart") && mc.thePlayer != null && shouldSpoof) {
+                playerPacket.onGround = true;
+                shouldSpoof = false;
 
             if (mode.equalsIgnoreCase("NewPacket") && mc.thePlayer != null && mc.thePlayer.fallDistance > 2.5F && mc.thePlayer.ticksExisted % 2 == 0) 
                 PacketUtils.sendPacketNoEvent(new C03PacketPlayer.C04PacketPlayerPosition(playerPacket.x, playerPacket.y, playerPacket.z, true));
